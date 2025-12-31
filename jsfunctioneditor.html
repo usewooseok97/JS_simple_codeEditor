@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ko-KR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>화면 결과 실험</title>
+    <style>
+      form {
+        padding: 2% 10%;
+        display: flex;
+        flex-direction: column;
+      }
+      textarea {
+        resize: none;
+        font-size: 1rem;
+      }
+      textarea:focus {
+        outline: none;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <form action="">
+        <h1>간단한 자바스크립트 함수를 실행해보세요</h1>
+        <textarea
+          name="textarea"
+          id="textarea"
+          class="textarea"
+          rows="5"
+          placeholder="ex&#41; typeof 12"
+        ></textarea>
+        <button type="submit">자바스크립트 임시 실행기</button>
+      </form>
+      <strong>화면 결과</strong>
+      <div class="result"></div>
+    </main>
+    <section>
+      <h3>화면결과 리스트</h3>
+      <ul></ul>
+    </section>
+  </body>
+  <script>
+    const $textarea = document.querySelector(".textarea");
+    const $button = document.querySelector("button");
+    const resultDiv = document.querySelector(".result");
+
+    const excuteCode = (code) => {
+      try {
+        return new Function("return " + code)();
+      } catch (e) {
+        try {
+          return new Function(code)();
+        } catch (error) {
+          throw error;
+        }
+      }
+    };
+
+    $button.addEventListener("click", (e) => {
+      e.preventDefault();
+      let textareaResult = $textarea.value;
+      if (textareaResult) {
+        const output = excuteCode(textareaResult).toString();
+        if (output instanceof SyntaxError &&textareaResult.trim().startsWith("<")) {
+          output =
+            '⚠️ HTML 태그는 큰따옴표(")나 백틱(`)으로 감싸야 문자열로 인식됩니다.';
+        }
+        resultDiv.textContent = output;
+      }
+    });
+  </script>
+</html>
