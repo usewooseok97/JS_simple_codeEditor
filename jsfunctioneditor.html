@@ -3,71 +3,223 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>화면 결과 실험</title>
+    <title>JS Runner with History Mode</title>
     <style>
-      form {
-        padding: 2% 10%;
-        display: flex;
-        flex-direction: column;
-      }
+      body { font-family: sans-serif; }
+      form { padding: 2% 10%; display: flex; flex-direction: column; }
       textarea {
-        resize: none;
-        font-size: 1rem;
+        resize: none; font-size: 1rem; padding: 10px; font-family: monospace; line-height: 1.5;
       }
-      textarea:focus {
-        outline: none;
+      textarea:focus { outline: none; border: 1px solid #007bff; }
+      
+      .result-container { display: flex; gap: 10px; margin-top: 10px; }
+      .result-box {
+        flex: 1; border: 1px solid #ccc; border-radius: 4px; padding: 10px;
+        min-height: 50px; background: #f9f9f9;
+      }
+      .result-box h4 { margin: 0 0 5px 0; font-size: 0.9rem; color: #555; border-bottom: 1px solid #eee; padding-bottom: 3px; }
+      .content { font-family: monospace; white-space: pre-wrap; word-break: break-all; line-height: 1.5; }
+      
+      .errorMessage { color: red; background-color: #fff0f0; }
+
+      /* History UI */
+      .history-header { padding: 0 10%; display: flex; align-items: center; gap: 15px; }
+      .download-btn {
+        padding: 5px 10px; font-size: 0.8rem; cursor: pointer;
+        background-color: #28a745; color: white; border: none; border-radius: 4px;
+      }
+      ul { padding: 0 10%; list-style: none; }
+      li.history-item {
+        border: 1px solid #ddd; margin-bottom: 15px; padding: 15px;
+        border-radius: 8px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      }
+      .history-code { background: #333; color: #fff; padding: 8px; border-radius: 4px; margin-bottom: 8px; font-family: monospace; white-space: pre-wrap; }
+      .history-output { display: flex; gap: 10px; font-size: 0.9rem; margin-bottom: 8px;}
+      .history-col { flex: 1; background: #f4f4f4; padding: 8px; border-radius: 4px; }
+      .history-label { font-weight: bold; display: block; margin-bottom: 4px; color: #666; font-size: 0.8rem; }
+      
+      /* 실행 모드 표시 스타일 */
+      .history-mode-badge {
+        font-size: 0.8rem; color: #666; text-align: right;
+        border-top: 1px dashed #eee; padding-top: 5px; margin-top: 5px;
       }
     </style>
   </head>
   <body>
     <main>
       <form action="">
-        <h1>간단한 자바스크립트 함수를 실행해보세요</h1>
-        <textarea
-          name="textarea"
-          id="textarea"
-          class="textarea"
-          rows="5"
-          placeholder="ex&#41; typeof 12"
-        ></textarea>
-        <button type="submit">자바스크립트 임시 실행기</button>
+        <h1>자바스크립트 실행기</h1>
+        <textarea name="textarea" class="textarea" rows="5" placeholder="let a = 10; console.log(a);"></textarea>
+        
+        <div style="margin-top: 10px; font-size: 0.9rem;">
+            <label style="cursor: pointer; display: flex; align-items: center; gap: 5px;">
+              <input type="checkbox" id="splitModeCheckbox"> 
+              <span><strong>개별 실행 모드</strong> (세미콜론 ; 마다 끊어서 실행 / 단순 값 확인용)</span>
+            </label>
+        </div>
+
+        <button type="submit" style="margin-top: 10px; padding: 10px; cursor: pointer;">실행하기</button>
       </form>
-      <strong>화면 결과</strong>
-      <div class="result"></div>
+
+      <div style="padding: 0 10%;">
+        <strong>현재 실행 결과</strong>
+        <div class="result-container">
+            <div class="result-box">
+                <h4>Return Value</h4>
+                <div class="content" id="returnValue"></div>
+            </div>
+            <div class="result-box">
+                <h4>Console Output</h4>
+                <div class="content" id="consoleValue"></div>
+            </div>
+        </div>
+      </div>
     </main>
+
     <section>
-      <h3>화면결과 리스트</h3>
-      <ul></ul>
+      <div class="history-header">
+          <h3>히스토리</h3>
+          <button id="downloadBtn" class="download-btn">📥 .txt 다운로드</button>
+      </div>
+      <ul id="historyList"></ul>
     </section>
   </body>
+
   <script>
     const $textarea = document.querySelector(".textarea");
-    const $button = document.querySelector("button");
-    const resultDiv = document.querySelector(".result");
+    const $button = document.querySelector("button[type='submit']");
+    const $downloadBtn = document.getElementById("downloadBtn");
+    const $splitModeCheckbox = document.getElementById("splitModeCheckbox");
+    
+    const $returnView = document.getElementById("returnValue");
+    const $consoleView = document.getElementById("consoleValue");
+    const $historyList = document.getElementById("historyList");
 
-    const excuteCode = (code) => {
-      try {
-        return new Function("return " + code)();
-      } catch (e) {
-        try {
-          return new Function(code)();
-        } catch (error) {
-          throw error;
-        }
+    const historyData = [];
+
+    // 개별 코드 실행 함수
+    const excuteLine = (codeLine) => {
+      if (!codeLine.trim()) return ""; 
+      try { return new Function("return " + codeLine)(); } 
+      catch (e) {
+        try { const result = new Function(codeLine)(); return result === undefined ? "undefined" : result; } 
+        catch (error) { return "Error"; }
       }
     };
 
     $button.addEventListener("click", (e) => {
       e.preventDefault();
-      let textareaResult = $textarea.value;
-      if (textareaResult) {
-        const output = excuteCode(textareaResult).toString();
-        if (output instanceof SyntaxError &&textareaResult.trim().startsWith("<")) {
-          output =
-            '⚠️ HTML 태그는 큰따옴표(")나 백틱(`)으로 감싸야 문자열로 인식됩니다.';
+      const code = $textarea.value;
+      if (!code) return;
+
+      const logBuffer = [];
+      const originalLog = console.log;
+      console.log = (...args) => {
+        const message = args.map(arg => String(arg)).join(' ');
+        logBuffer.push(message);
+      };
+
+      const returnResults = [];
+      let globalError = false;
+      const isSplitMode = $splitModeCheckbox.checked; // 체크박스 상태 확인
+
+      try {
+        if (isSplitMode) {
+            // [모드 1] 개별 실행 (세미콜론 기준)
+            const lines = code.split(';').filter(line => line.trim() !== "");
+            lines.forEach(line => {
+                const result = excuteLine(line);
+                returnResults.push(String(result));
+            });
+        } else {
+            // [모드 2] 통합 실행 (전체 스크립트)
+             try {
+                const result = new Function(code)();
+                returnResults.push(String(result));
+             } catch (e) {
+                 throw e; 
+             }
         }
-        resultDiv.textContent = output;
+      } catch (err) {
+          globalError = true;
+          returnResults.push("Error: " + err.message);
+      } finally {
+        console.log = originalLog;
       }
+
+      const finalReturnOutput = returnResults.join('\n'); 
+      const finalConsoleOutput = logBuffer.length > 0 ? logBuffer.join('\n') : "";
+
+      $returnView.textContent = finalReturnOutput;
+      $consoleView.textContent = finalConsoleOutput;
+
+      // 히스토리 추가 (모드 정보 전달)
+      addHistoryItem(code, finalReturnOutput, finalConsoleOutput, globalError, isSplitMode);
     });
+
+    // 히스토리 아이템 추가
+    function addHistoryItem(code, returnVal, consoleVal, isError, isSplitMode) {
+        const modeText = isSplitMode ? "☑️ 개별 실행 모드 (Split by ;)" : "🟩 통합 실행 모드 (Script Block)";
+
+        // 1. DOM 추가
+        const li = document.createElement("li");
+        li.className = "history-item";
+        li.innerHTML = `
+            <div class="history-code">${escapeHtml(code)}</div>
+            <div class="history-output">
+                <div class="history-col">
+                    <span class="history-label">Return Values</span>
+                    <span style="white-space: pre-wrap; color: ${isError ? 'red' : 'blue'};">${escapeHtml(returnVal)}</span>
+                </div>
+                <div class="history-col">
+                    <span class="history-label">Console Output</span>
+                    <span style="white-space: pre-wrap;">${escapeHtml(consoleVal)}</span>
+                </div>
+            </div>
+            <div class="history-mode-badge">${modeText}</div>
+        `;
+        $historyList.prepend(li);
+
+        // 2. 데이터 저장
+        historyData.unshift({
+            timestamp: new Date().toLocaleString(),
+            code: code,
+            returnValue: returnVal,
+            consoleValue: consoleVal,
+            mode: modeText // 저장 데이터에도 모드 추가
+        });
+    }
+
+    // 파일 다운로드
+    $downloadBtn.addEventListener("click", () => {
+        if (historyData.length === 0) {
+            alert("저장된 히스토리가 없습니다.");
+            return;
+        }
+
+        let fileContent = "=== JavaScript Execution History ===\n\n";
+        
+        historyData.forEach((item, index) => {
+            fileContent += `[Record #${historyData.length - index} | ${item.timestamp}]\n`;
+            fileContent += `--- Execution Mode ---\n${item.mode}\n`; // 텍스트 파일에도 추가
+            fileContent += `--- Input Code ---\n${item.code}\n`;
+            fileContent += `--- Return Values ---\n${item.returnValue}\n`;
+            fileContent += `--- Console Output ---\n${item.consoleValue || "(no log)"}\n`;
+            fileContent += `\n====================================\n\n`;
+        });
+
+        const blob = new Blob([fileContent], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `js_history_${new Date().toISOString().slice(0,10)}.txt`;
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+
+    function escapeHtml(text) {
+        if (!text) return text;
+        return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
   </script>
 </html>
