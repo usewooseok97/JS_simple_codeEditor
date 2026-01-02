@@ -131,9 +131,9 @@ gantt
 
 **메인 화면**
 ```
-[메인 화면](./images/mainImg.png)
+![메인 화면](./images/mainImg.png)
 
-[결과 화면](./images/result.png)
+![결과 화면](./images/result.png)
 ```
 
 **주요 UI 컴포넌트**
@@ -146,7 +146,7 @@ gantt
 
 ## 6. 메인 기능
 ### 6.1 메인기능 알고리즘
-[결과 화면](./images/algorithum.png)
+![결과 화면](./images/algorithum.png)
 
 ### 6.1 코드 실행 엔진
 
