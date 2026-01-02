@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ko-KR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="자바스크립트 코드를 실행하고 결과를 확인할 수 있는 온라인 실행기. 개별 실행 모드와 통합 실행 모드 지원, 실행 히스토리 저장 기능 제공"
+    />
+    <meta property="og:title" content="자바스크립트 실행기 - JS Runner" />
+    <meta
+      property="og:description"
+      content="자바스크립트 코드를 실행하고 결과를 확인할 수 있는 온라인 실행기"
+    />
+    <meta property="og:image" content="./images/og-image.png" />
+    <title>자바스크립트 실행기 - JS Runner with History</title>
+    <link rel="stylesheet" href="./main.css" />
+  </head>
+  <body>
+    <main>
+      
+      <form action="#" method="post" class="form-container">
+        <h2 class="page-title">자바스크립트 실행기</h2>
+        
+        <label for="code-input" class="sr-only">자바스크립트 코드 입력</label>
+        <textarea
+          name="code"
+          id="code-input"
+          class="code-textarea"
+          rows="5"
+          placeholder="let a = 10; console.log(a);"
+          aria-label="자바스크립트 코드 입력란"
+        ></textarea>
+        
+        <div class="checkbox-container">
+          <label class="checkbox-label">
+            <input type="checkbox" id="split-mode-checkbox" name="split-mode" />
+            <span>
+              <strong>개별 실행 모드</strong> (세미콜론 ; 마다 끊어서 실행 / 단순 값 확인용)
+            </span>
+          </label>
+        </div>
+
+        <button type="submit" class="submit-button">실행하기</button>
+      </form>
+
+      <section class="result-section">
+        <h2 class="result-title">현재 실행 결과</h2>
+        <div class="result-container">
+          <div class="result-box">
+            <h3 class="result-box-title">Return Value</h3>
+            <div class="result-content" id="return-value" aria-live="polite"></div>
+          </div>
+          <div class="result-box">
+            <h3 class="result-box-title">Console Output</h3>
+            <div class="result-content" id="console-value" aria-live="polite"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <section class="history-section">
+      <div class="history-header">
+        <h2 class="history-title">히스토리</h2>
+        <button
+          type="button"
+          id="download-btn"
+          class="download-button"
+          aria-label="히스토리 텍스트 파일로 다운로드"
+        >
+          텍스트파일로 다운로드
+        </button>
+      </div>
+      <ul id="history-list" class="history-list"></ul>
+    </section>
+
+    <script src="script.js"></script>
+  </body>
+</html>
