@@ -130,11 +130,11 @@ gantt
 ## 5.  화면 설계
 
 **메인 화면**
-```
+
 ![메인 화면](./images/mainImg.png)
 
 ![결과 화면](./images/result.png)
-```
+
 
 **주요 UI 컴포넌트**
 - **코드 입력 영역**: 모노스페이스 폰트, 1.5 line-height
