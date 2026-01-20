@@ -52,8 +52,8 @@ W
 
 ### 2.1 개발 환경
 **Front-End**
-- HTML5
-- CSS3 (CSS Variables, Flexbox)
+- HTML
+- CSS
 - Vanilla JavaScript (ES6+)
 
 **개발 도구**

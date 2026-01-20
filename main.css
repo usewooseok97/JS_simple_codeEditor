@@ -6,6 +6,7 @@
     /* 색상 */
     --background-color: #ffffff;
     --text-color: #333333;
+    --button-color: #141414;
     --primary-color: #007bff;
     --secondary-color: #6c757d;
     --success-color: #28a745;
@@ -83,7 +84,7 @@
     margin-top: var(--spacing-sm);
     padding: var(--spacing-sm);
     background-color: var(--primary-color);
-    color: white;
+    color: var(--button-color);
     border-radius: 4px;
     font-size: 1.6rem;
     transition: background-color 0.3s ease, transform 0.3s ease;
@@ -173,7 +174,7 @@
     padding: var(--spacing-xs) var(--spacing-sm);
     font-size: 1.4rem;
     background-color: var(--success-color);
-    color: white;
+    color: var(--button-color);
     border-radius: 4px;
     transition: background-color 0.3s ease;
 }
