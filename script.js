@@ -98,40 +98,14 @@
             });
           } else {
             // [모드 2] 통합 실행 (전체 스크립트)
-            let result;
-            const executionCode = isStrict ? `'use strict';\n${originalCode}` : originalCode;
-
-            // Heuristic to implicitly return the last expression's value
-            const lines = originalCode.split('\n');
-            let lastLineIndex = -1;
-            for (let i = lines.length - 1; i >= 0; i--) {
-                if (lines[i].trim() !== '') {
-                    lastLineIndex = i;
-                    break;
-                }
-            }
-
-            let modifiedCode = null;
-            if (lastLineIndex !== -1) {
-                const lastLine = lines[lastLineIndex];
-                const statementKeywords = ['const', 'let', 'var', 'if', 'for', 'while', 'switch', 'return', 'function', 'class', 'try', 'throw', 'debugger', 'import', 'export'];
-                if (!statementKeywords.some(kw => lastLine.trim().startsWith(kw))) {
-                    const codeToExecute = lines.slice(0, lastLineIndex).join('\n') + '\nreturn ' + lastLine;
-                    modifiedCode = isStrict ? `'use strict';\n${codeToExecute}` : codeToExecute;
-                }
-            }
-
             try {
-                if (modifiedCode) {
-                    result = new Function(modifiedCode)();
-                } else {
-                    result = new Function(executionCode)();
-                }
+                const executionCode = isStrict ? `'use strict';\n${originalCode}` : originalCode;
+                let result = new Function(executionCode)();
+                returnResults.push(formatOutput(result));
             } catch (e) {
-                // If the heuristic fails, fall back to the original version
-                result = new Function(executionCode)();
+                // 통합 실행 중 발생한 모든 에러는 여기서 처리됩니다.
+                throw e;
             }
-            returnResults.push(formatOutput(result));
           }
         } catch (err) {
           globalError = true;
