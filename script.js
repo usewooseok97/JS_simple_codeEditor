@@ -12,7 +12,13 @@
 
       // 출력 포맷팅 함수
       const formatOutput = (value) => {
-        if (typeof value === 'object' && value !== null) {
+        if (value === undefined) {
+          return 'undefined';
+        }
+        if (value === null) {
+          return 'null';
+        }
+        if (typeof value === 'object') {
           try {
             return JSON.stringify(value, null, 2);
           } catch (e) {
@@ -22,38 +28,25 @@
         if (typeof value === 'function') {
           return value.toString();
         }
-        if (value === undefined) {
-          return 'undefined';
-        }
         return String(value);
-      };
-
-      const resolveFunction = (value) => {
-        let finalValue = value;
-        try {
-          // 함수가 인자 없이 호출 가능한 경우, 최종 값을 얻기 위해 반복적으로 호출
-          while (typeof finalValue === 'function' && finalValue.length === 0) {
-            finalValue = finalValue();
-          }
-        } catch (error) {
-            // 함수 실행 중 에러가 발생하면 에러 메시지 반환
-            return `Error during function execution: ${error.message}`;
-        }
-        return finalValue;
       };
 
       // 개별 코드 실행 함수
       const executeLine = (codeLine, isStrict) => {
         if (!codeLine.trim()) return "";
-        const finalCode = isStrict ? `'use strict';\n${codeLine}` : codeLine;
+        
+        const strictPragma = isStrict ? "'use strict';\n" : "";
+
         try {
-          return new Function("return " + finalCode)();
+          // Try to execute as an expression that returns a value.
+          return new Function(strictPragma + "return " + codeLine)();
         } catch (e) {
           try {
-            return new Function(finalCode)();
+            // If it fails, try to execute as a statement.
+            return new Function(strictPragma + codeLine)();
           } catch (error) {
             let errorMessage = `Error: ${error.message}`;
-            if (error instanceof SyntaxError && finalCode.trim().startsWith('<')) {
+            if (error instanceof SyntaxError && codeLine.trim().startsWith('<')) {
               errorMessage = 'HTML 태그는 문자열로 처리해야 합니다. 따옴표로 감싸보세요.';
             }
             return errorMessage;
@@ -79,14 +72,11 @@
 
       $submitButton.addEventListener("click", (e) => {
         e.preventDefault();
-        let code = $codeInput.value;
-        if (!code) return;
+        const originalCode = $codeInput.value;
+        if (!originalCode) return;
         
         const isStrict = $strictModeCheckbox.checked;
-        if (isStrict) {
-          code = `'use strict';\n${code}`;
-        }
-
+        
         const logBuffer = [];
         const originalLog = console.log;
         console.log = (...args) => {
@@ -101,28 +91,52 @@
         try {
           if (isSplitMode) {
             // [모드 1] 개별 실행 (세미콜론 기준)
-            const lines = code.split(';').filter(line => line.trim() !== "");
+            const lines = originalCode.split(';').filter(line => line.trim() !== "");
             lines.forEach(line => {
-              // 개별 실행에서는 strict 모드 여부만 전달하고, 'use strict'는 executeLine에서 처리
               let result = executeLine(line, isStrict);
-              result = resolveFunction(result);
               returnResults.push(formatOutput(result));
             });
           } else {
             // [모드 2] 통합 실행 (전체 스크립트)
-            try {
-              // 통합 실행에서는 이미 코드 상단에 'use strict'가 추가됨
-              let result = new Function(code)();
-              result = resolveFunction(result);
-              returnResults.push(formatOutput(result));
-            } catch (e) {
-              throw e;
+            let result;
+            const executionCode = isStrict ? `'use strict';\n${originalCode}` : originalCode;
+
+            // Heuristic to implicitly return the last expression's value
+            const lines = originalCode.split('\n');
+            let lastLineIndex = -1;
+            for (let i = lines.length - 1; i >= 0; i--) {
+                if (lines[i].trim() !== '') {
+                    lastLineIndex = i;
+                    break;
+                }
             }
+
+            let modifiedCode = null;
+            if (lastLineIndex !== -1) {
+                const lastLine = lines[lastLineIndex];
+                const statementKeywords = ['const', 'let', 'var', 'if', 'for', 'while', 'switch', 'return', 'function', 'class', 'try', 'throw', 'debugger', 'import', 'export'];
+                if (!statementKeywords.some(kw => lastLine.trim().startsWith(kw))) {
+                    const codeToExecute = lines.slice(0, lastLineIndex).join('\n') + '\nreturn ' + lastLine;
+                    modifiedCode = isStrict ? `'use strict';\n${codeToExecute}` : codeToExecute;
+                }
+            }
+
+            try {
+                if (modifiedCode) {
+                    result = new Function(modifiedCode)();
+                } else {
+                    result = new Function(executionCode)();
+                }
+            } catch (e) {
+                // If the heuristic fails, fall back to the original version
+                result = new Function(executionCode)();
+            }
+            returnResults.push(formatOutput(result));
           }
         } catch (err) {
           globalError = true;
           let errorMessage = `Error: ${err.message}`;
-            if (err instanceof SyntaxError && code.trim().startsWith('<')) {
+            if (err instanceof SyntaxError && originalCode.trim().startsWith('<')) {
               errorMessage = 'HTML 태그는 문자열로 처리해야 합니다. 따옴표로 감싸보세요.';
             }
           returnResults.push(errorMessage);
@@ -137,7 +151,7 @@
         $consoleView.textContent = finalConsoleOutput;
 
         // 히스토리 추가 (모드 정보 전달)
-        addHistoryItem(code, finalReturnOutput, finalConsoleOutput, globalError, isSplitMode, isStrict);
+        addHistoryItem(originalCode, finalReturnOutput, finalConsoleOutput, globalError, isSplitMode, isStrict);
       });
 
       // 히스토리 아이템 추가
