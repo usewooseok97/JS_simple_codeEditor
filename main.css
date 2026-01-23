@@ -61,6 +61,9 @@
     border: 1px solid var(--border-color);
     border-radius: 4px;
 }
+.code-textarea::placeholder{
+    color: var(--background-color);
+}
 
 .code-textarea:focus {
     outline: 3px solid var(--primary-color);

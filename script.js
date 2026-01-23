@@ -10,6 +10,17 @@
 
       const historyData = [];
 
+      // [추가] CodeMirror 에디터 적용
+      const editor = CodeMirror.fromTextArea($codeInput, {
+        mode: "javascript",       // 언어 설정
+        theme: "dracula",         // 테마 설정 (index.html에 추가한 테마와 일치해야 함)
+        lineNumbers: true,        // 줄 번호 표시
+        tabSize: 2,               // 탭 크기
+        lineWrapping: true,       // 줄바꿈 자동
+        viewportMargin: Infinity,  // 내용에 맞춰 높이 조절 (선택사항)
+        placeholder: "let a = 10; console.log(a);"
+      });
+
       // 출력 포맷팅 함수
       const formatOutput = (value) => {
         if (value === undefined) {
@@ -53,26 +64,28 @@
           }
         }
       };
-      
-      $codeInput.addEventListener('keydown', function(e) {
-        if (e.key == 'Tab') {
-          e.preventDefault();
-          var start = this.selectionStart;
-          var end = this.selectionEnd;
 
-          // set textarea value to: text before caret + tab + text after caret
-          this.value = this.value.substring(0, start) +
-            "\t" + this.value.substring(end);
+      // 26.01.23이후 사용안함
+      // $codeInput.addEventListener('keydown', function(e) {
+      //   if (e.key == 'Tab') {
+      //     e.preventDefault();
+      //     var start = this.selectionStart;
+      //     var end = this.selectionEnd;
 
-          // put caret at right position again
-          this.selectionStart =
-            this.selectionEnd = start + 1;
-        }
-      });
+      //     // set textarea value to: text before caret + tab + text after caret
+      //     this.value = this.value.substring(0, start) +
+      //       "\t" + this.value.substring(end);
+
+      //     // put caret at right position again
+      //     this.selectionStart =
+      //       this.selectionEnd = start + 1;
+      //   }
+      // });
 
       $submitButton.addEventListener("click", (e) => {
         e.preventDefault();
-        const originalCode = $codeInput.value;
+        // const originalCode = $codeInput.value;
+        const originalCode = editor.getValue();
         if (!originalCode) return;
         
         const isStrict = $strictModeCheckbox.checked;
@@ -135,12 +148,33 @@
           : "통합 실행 모드";
         if(isStrict) modeText += " (Strict)";
 
+        // Prism.highlight(코드문자열, 언어정의, 언어이름)
+        const highlightedCode = Prism.highlight(code, Prism.languages.javascript, 'javascript');
 
         // 1. DOM 추가
         const li = document.createElement("li");
         li.className = "history-item";
+        // 26.01.23이후로 사용안함
+        // li.innerHTML = `
+        //   <div class="history-code">${escapeHtml(code)}</div>
+        //   <div class="history-output">
+        //     <div class="history-column">
+        //       <span class="history-label">Return Values</span>
+        //       <span style="white-space: pre-wrap; color: ${isError ? 'var(--error-color)' : 'var(--primary-color)'};">${escapeHtml(returnVal)}</span>
+        //     </div>
+        //     <div class="history-column">
+        //       <span class="history-label">Console Output</span>
+        //       <span style="white-space: pre-wrap;">${escapeHtml(consoleVal)}</span>
+        //     </div>
+        //   </div>
+        //   <div class="history-mode-badge">${modeText}</div>
+        // `;
+        // pre 태그와 code 태그로 감싸야 Prism 스타일이 제대로 먹힙니다.
+
         li.innerHTML = `
-          <div class="history-code">${escapeHtml(code)}</div>
+          <div class="history-code">
+            <pre style="margin:0; background:transparent;"><code class="language-javascript">${highlightedCode}</code></pre>
+          </div>
           <div class="history-output">
             <div class="history-column">
               <span class="history-label">Return Values</span>
@@ -153,6 +187,7 @@
           </div>
           <div class="history-mode-badge">${modeText}</div>
         `;
+
         $historyList.prepend(li);
 
         // 2. 데이터 저장
@@ -172,22 +207,56 @@
           return;
         }
 
-        let fileContent = "=== JavaScript Execution History ===\n\n";
+        let fileContent = `
+          <!DOCTYPE html>
+          <html lang="ko">
+          <head>
+            <meta charset="UTF-8">
+            <title>JS Runner History</title>
+            <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-vsc-dark-plus.min.css" rel="stylesheet" />
+            <style>
+              body { font-family: sans-serif; padding: 20px; background: #f0f0f0; }
+              .record { background: #fff; padding: 15px; margin-bottom: 20px; border-radius: 8px; border: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+              .meta { font-size: 0.9em; color: #666; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+              .label { font-weight: bold; display: block; margin-top: 10px; color: #333; }
+              pre { border-radius: 5px; margin: 5px 0; }
+              .output { background: #f9f9f9; padding: 10px; border-radius: 4px; white-space: pre-wrap; font-family: monospace; border: 1px solid #eee; }
+            </style>
+          </head>
+          <body>
+            <h1>JavaScript Execution History</h1>
+          `;
         
-        historyData.forEach((item, index) => {
-          fileContent += `[Record #${historyData.length - index} | ${item.timestamp}]\n`;
-          fileContent += `--- Execution Mode ---\n${item.mode}\n`;
-          fileContent += `--- Input Code ---\n${item.code}\n`;
-          fileContent += `--- Return Values ---\n${item.returnValue}\n`;
-          fileContent += `--- Console Output ---\n${item.consoleValue || "(no log)"}\n`;
-          fileContent += `\n====================================\n\n`;
-        });
+          // 히스토리 데이터 루프
+          historyData.forEach((item, index) => {
+            // 저장할 때도 코드를 하이라이팅 처리해서 HTML로 변환
+            const highlightedCode = Prism.highlight(item.code, Prism.languages.javascript, 'javascript');
+            
+            fileContent += `
+            <div class="record">
+              <div class="meta">
+                <strong>Record #${historyData.length - index}</strong> | ${item.timestamp} | ${item.mode}
+              </div>
+              
+              <span class="label">Code:</span>
+              <pre><code class="language-javascript">${highlightedCode}</code></pre>
+              
+              <span class="label">Return Value:</span>
+              <div class="output">${escapeHtml(item.returnValue)}</div>
+              
+              <span class="label">Console Output:</span>
+              <div class="output">${escapeHtml(item.consoleValue || "(no log)")}</div>
+            </div>
+            `;
+          });
 
-        const blob = new Blob([fileContent], { type: "text/plain;charset=utf-8" });
+          fileContent += `</body></html>`;
+
+        const blob = new Blob([fileContent], { type: "text/html;charset=utf-8" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `js_history_${new Date().toISOString().slice(0,10)}.txt`;
+        a.download = `js_history_${new Date().toISOString().slice(0,10)}.html`;
         a.click();
         URL.revokeObjectURL(url);
       });

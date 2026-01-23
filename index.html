@@ -15,6 +15,11 @@
     <meta property="og:image" content="./images/og-image.png" />
     <title>자바스크립트 실행기 - JS Runner with History</title>
     <link rel="stylesheet" href="./main.css" />
+    <!-- CodeMirror 에디터 적용 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/dracula.min.css">
+    <!-- Prism.js 에디터 적용 -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-vsc-dark-plus.min.css" rel="stylesheet" />
   </head>
   <body>
     <main>
@@ -24,12 +29,9 @@
         
         <label for="code-input" class="sr-only">자바스크립트 코드 입력</label>
         <textarea
-          name="code"
           id="code-input"
           class="code-textarea"
           rows="5"
-          placeholder="let a = 10; console.log(a);"
-          aria-label="자바스크립트 코드 입력란"
         ></textarea>
         
         <div class="checkbox-container">
@@ -72,14 +74,21 @@
           type="button"
           id="download-btn"
           class="download-button"
-          aria-label="히스토리 텍스트 파일로 다운로드"
+          aria-label="히스토리 html 파일로 다운로드"
         >
-          텍스트파일로 다운로드
+          html파일로 다운로드
         </button>
       </div>
       <ul id="history-list" class="history-list"></ul>
     </section>
-
+    <!-- CodeMirror 에디터 적용 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/display/placeholder.min.js"></script>
+    <!-- Prism.js 에디터 적용 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+    
     <script src="script.js"></script>
   </body>
 </html>
