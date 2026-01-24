@@ -1,0 +1,11 @@
+# .env file
+# Contains sensitive information like API keys. Do not commit to git.
+.env
+
+# Node.js dependencies
+# Typically, you should not commit the node_modules directory.
+/node_modules
+
+# OS-specific files
+.DS_Store
+Thumbs.db

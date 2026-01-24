@@ -270,3 +270,56 @@
           .replace(/"/g, "&quot;")
           .replace(/'/g, "&#039;");
       }
+
+// Mermaid 초기화
+mermaid.initialize({ startOnLoad: true });
+
+const $analyzeBtn = document.getElementById("analyze-btn");
+const $aiExplanation = document.getElementById("ai-explanation");
+const $mermaidView = document.getElementById("mermaid-view");
+
+$analyzeBtn.addEventListener("click", async () => {
+    // 에디터에서 코드 가져오기 (CodeMirror 사용 시 editor.getValue())
+    const code = editor.getValue(); 
+
+    if (!code.trim()) {
+        alert("분석할 코드를 입력해주세요.");
+        return;
+    }
+
+    // UI 로딩 상태로 변경
+    $analyzeBtn.disabled = true;
+    $aiExplanation.textContent = "AI가 코드를 분석하고 있습니다... 🧠";
+    $mermaidView.innerHTML = "Loading...";
+
+    try {
+        // [변경] 내 서버(api/analyze.js)로 요청 전송
+        const response = await fetch('/api/analyze', {
+            method: 'POST',
+            body: JSON.stringify({ code: code }) // 코드만 보냄 (프롬프트는 서버에 있음)
+        });
+
+        if (!response.ok) {
+            throw new Error(`Server Error: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        // [보안] 1. XSS 방지 (텍스트 컨텐츠 처리)
+        $aiExplanation.textContent = result.explanation;
+
+        // [보안] 2. Mermaid 차트 소독 후 렌더링
+        const cleanChart = DOMPurify.sanitize(result.chart);
+        $mermaidView.innerHTML = cleanChart;
+        $mermaidView.removeAttribute("data-processed"); // 재렌더링을 위해 속성 제거
+        
+        await mermaid.run({ nodes: [$mermaidView] });
+
+    } catch (error) {
+        console.error(error);
+        $aiExplanation.textContent = "분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
+        $mermaidView.innerHTML = "Error";
+    } finally {
+        $analyzeBtn.disabled = false;
+    }
+});
