@@ -106,6 +106,9 @@
     outline: 3px solid var(--primary-color);
     outline-offset: 3px;
 }
+.ai-section{
+    padding: 2% 10%;
+}
 
 /* ===== 결과 컨테이너 ===== */
 .result-section {
