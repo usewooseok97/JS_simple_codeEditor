@@ -1,5 +1,6 @@
       const $codeInput = document.getElementById("code-input");
       const $submitButton = document.querySelector(".submit-button");
+      const $stopButton = document.getElementById("stop-btn");
       const $downloadBtn = document.getElementById("download-btn");
       const $splitModeCheckbox = document.getElementById("split-mode-checkbox");
       const $strictModeCheckbox = document.getElementById("strict-mode-checkbox");
@@ -9,6 +10,53 @@
       const $historyList = document.getElementById("history-list");
 
       const historyData = [];
+
+      // Web Worker 관련 변수
+      let currentWorker = null;
+      const EXECUTION_TIMEOUT = 5000; // 5초 타임아웃
+
+      // Web Worker를 사용한 안전한 코드 실행
+      function executeWithTimeout(code, isStrict, isSplitMode, timeout = EXECUTION_TIMEOUT) {
+        return new Promise((resolve, reject) => {
+          const worker = new Worker('worker.js');
+          currentWorker = worker;
+
+          const timer = setTimeout(() => {
+            worker.terminate();
+            currentWorker = null;
+            reject(new Error('⏱️ 실행 시간 초과 (무한 루프 의심) - ' + (timeout / 1000) + '초 후 자동 중단됨'));
+          }, timeout);
+
+          worker.onmessage = (e) => {
+            clearTimeout(timer);
+            worker.terminate();
+            currentWorker = null;
+            resolve(e.data);
+          };
+
+          worker.onerror = (e) => {
+            clearTimeout(timer);
+            worker.terminate();
+            currentWorker = null;
+            reject(new Error(e.message));
+          };
+
+          worker.postMessage({ code, isStrict, isSplitMode });
+        });
+      }
+
+      // 실행 중지 버튼
+      $stopButton.addEventListener("click", () => {
+        if (currentWorker) {
+          currentWorker.terminate();
+          currentWorker = null;
+          $returnView.textContent = '⛔ 사용자가 실행을 중지했습니다.';
+          $consoleView.textContent = '';
+          $submitButton.disabled = false;
+          $submitButton.textContent = '실행하기';
+          $stopButton.style.display = 'none';
+        }
+      });
 
       // [추가] CodeMirror 에디터 적용
       const editor = CodeMirror.fromTextArea($codeInput, {
@@ -65,80 +113,46 @@
         }
       };
 
-      // 26.01.23이후 사용안함
-      // $codeInput.addEventListener('keydown', function(e) {
-      //   if (e.key == 'Tab') {
-      //     e.preventDefault();
-      //     var start = this.selectionStart;
-      //     var end = this.selectionEnd;
-
-      //     // set textarea value to: text before caret + tab + text after caret
-      //     this.value = this.value.substring(0, start) +
-      //       "\t" + this.value.substring(end);
-
-      //     // put caret at right position again
-      //     this.selectionStart =
-      //       this.selectionEnd = start + 1;
-      //   }
-      // });
-
-      $submitButton.addEventListener("click", (e) => {
+      $submitButton.addEventListener("click", async (e) => {
         e.preventDefault();
-        // const originalCode = $codeInput.value;
-        const originalCode = editor.getValue();
-        if (!originalCode) return;
-        
-        const isStrict = $strictModeCheckbox.checked;
-        
-        const logBuffer = [];
-        const originalLog = console.log;
-        console.log = (...args) => {
-          const message = args.map(arg => formatOutput(arg)).join(' ');
-          logBuffer.push(message);
-        };
+        const code = editor.getValue();
+        if (!code.trim()) return;
 
-        const returnResults = [];
-        let globalError = false;
+        const isStrict = $strictModeCheckbox.checked;
         const isSplitMode = $splitModeCheckbox.checked;
 
+        // UI 업데이트: 실행 시작
+        $submitButton.disabled = true;
+        $submitButton.textContent = '실행 중...';
+        $stopButton.style.display = 'inline-block';
+        $returnView.textContent = '';
+        $consoleView.textContent = '';
+
+        let results;
         try {
-          if (isSplitMode) {
-            // [모드 1] 개별 실행 (세미콜론 기준)
-            const lines = originalCode.split(';').filter(line => line.trim() !== "");
-            lines.forEach(line => {
-              let result = executeLine(line, isStrict);
-              returnResults.push(formatOutput(result));
-            });
-          } else {
-            // [모드 2] 통합 실행 (전체 스크립트)
-            try {
-                const executionCode = isStrict ? `'use strict';\n${originalCode}` : originalCode;
-                let result = new Function(executionCode)();
-                returnResults.push(formatOutput(result));
-            } catch (e) {
-                // 통합 실행 중 발생한 모든 에러는 여기서 처리됩니다.
-                throw e;
-            }
-          }
+            // Web Worker를 사용하여 코드 실행
+            results = await executeWithTimeout(code, isStrict, isSplitMode);
+
+            const finalReturnOutput = results.returnResults.join('\n');
+            const finalConsoleOutput = results.logs.join('\n');
+
+            $returnView.textContent = finalReturnOutput;
+            $consoleView.textContent = finalConsoleOutput;
+            addHistoryItem(code, finalReturnOutput, finalConsoleOutput, results.globalError, isSplitMode, isStrict);
+
         } catch (err) {
-          globalError = true;
-          let errorMessage = `Error: ${err.message}`;
-            if (err instanceof SyntaxError && originalCode.trim().startsWith('<')) {
-              errorMessage = 'HTML 태그는 문자열로 처리해야 합니다. 따옴표로 감싸보세요.';
-            }
-          returnResults.push(errorMessage);
+            // 타임아웃 또는 워커 에러 처리
+            const errorMessage = err.message;
+            $returnView.textContent = errorMessage;
+            $consoleView.textContent = '';
+            addHistoryItem(code, errorMessage, '', true, isSplitMode, isStrict);
+
         } finally {
-          console.log = originalLog;
+            // UI 업데이트: 실행 종료
+            $submitButton.disabled = false;
+            $submitButton.textContent = '실행하기';
+            $stopButton.style.display = 'none';
         }
-
-        const finalReturnOutput = returnResults.join('\n');
-        const finalConsoleOutput = logBuffer.length > 0 ? logBuffer.join('\n') : "";
-
-        $returnView.textContent = finalReturnOutput;
-        $consoleView.textContent = finalConsoleOutput;
-
-        // 히스토리 추가 (모드 정보 전달)
-        addHistoryItem(originalCode, finalReturnOutput, finalConsoleOutput, globalError, isSplitMode, isStrict);
       });
 
       // 히스토리 아이템 추가
@@ -154,22 +168,6 @@
         // 1. DOM 추가
         const li = document.createElement("li");
         li.className = "history-item";
-        // 26.01.23이후로 사용안함
-        // li.innerHTML = `
-        //   <div class="history-code">${escapeHtml(code)}</div>
-        //   <div class="history-output">
-        //     <div class="history-column">
-        //       <span class="history-label">Return Values</span>
-        //       <span style="white-space: pre-wrap; color: ${isError ? 'var(--error-color)' : 'var(--primary-color)'};">${escapeHtml(returnVal)}</span>
-        //     </div>
-        //     <div class="history-column">
-        //       <span class="history-label">Console Output</span>
-        //       <span style="white-space: pre-wrap;">${escapeHtml(consoleVal)}</span>
-        //     </div>
-        //   </div>
-        //   <div class="history-mode-badge">${modeText}</div>
-        // `;
-        // pre 태그와 code 태그로 감싸야 Prism 스타일이 제대로 먹힙니다.
 
         li.innerHTML = `
           <div class="history-code">
