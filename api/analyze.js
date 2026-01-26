@@ -35,6 +35,11 @@ export default async function handler(req, res) {
         "explanation": "코드 실행 예측 결과 및 설명 (한국어)",
         "chart": "Mermaid flowchart TD 문법 코드"
     }
+
+    [Mermaid 차트 규칙 - 중요!]
+    - 노드 텍스트에 괄호()를 사용하지 마세요. 예: func(x) → func_x 또는 "func x"
+    - 특수문자(세미콜론, 괄호, 따옴표 등)는 피하거나 텍스트로 대체하세요.
+    - 예시: A[함수 호출: myFunc arg1] --> B[결과 반환]
   `;
 
   try {
