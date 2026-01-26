@@ -18,7 +18,7 @@
         tabSize: 2,               // 탭 크기
         lineWrapping: true,       // 줄바꿈 자동
         viewportMargin: Infinity,  // 내용에 맞춰 높이 조절 (선택사항)
-        placeholder: "let a = 10; console.log(a);"
+        placeholder: "let a = 10; console.log(a); 함수를 사용할경우 return sumOddAndEven(5); 이런식으로 작성하면 함수의 return 값도 확인 가능합니다."
       });
 
       // 출력 포맷팅 함수

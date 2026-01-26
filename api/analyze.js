@@ -39,7 +39,7 @@ export default async function handler(req, res) {
 
   try {
     // 3. Google Gemini API 호출
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -48,9 +48,16 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
-    
+
+    // 디버깅: Google API 응답 로깅 (Vercel Logs에서 확인 가능)
+    console.log('=== Google API Debug ===');
+    console.log('Response Status:', response.status);
+    console.log('Response Data:', JSON.stringify(data, null, 2));
+    console.log('========================');
+
     // 4. 응답 데이터 가공
     if (!data.candidates || !data.candidates[0].content) {
+       console.error('Invalid response - Missing candidates:', JSON.stringify(data));
        throw new Error("AI 응답 없음");
     }
 
