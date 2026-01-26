@@ -286,7 +286,9 @@ $analyzeBtn.addEventListener("click", async () => {
     }
 
     // UI 로딩 상태로 변경
+    const originalBtnText = $analyzeBtn.textContent;
     $analyzeBtn.disabled = true;
+    $analyzeBtn.textContent = "분석 중...";
     $aiExplanation.textContent = "AI가 코드를 분석하고 있습니다... 🧠";
     $mermaidView.innerHTML = "Loading...";
 
@@ -319,5 +321,6 @@ $analyzeBtn.addEventListener("click", async () => {
         $mermaidView.innerHTML = "Error";
     } finally {
         $analyzeBtn.disabled = false;
+        $analyzeBtn.textContent = originalBtnText;
     }
 });
