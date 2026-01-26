@@ -13,7 +13,7 @@
 
       // Web Worker 관련 변수
       let currentWorker = null;
-      const EXECUTION_TIMEOUT = 5000; // 5초 타임아웃
+      const EXECUTION_TIMEOUT = 7000; // 7초 타임아웃
 
       // Web Worker를 사용한 안전한 코드 실행
       function executeWithTimeout(code, isStrict, isSplitMode, timeout = EXECUTION_TIMEOUT) {
